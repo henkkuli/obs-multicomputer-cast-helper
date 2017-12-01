@@ -1,0 +1,3 @@
+[submodule "obs-websocket-py"]
+	path = obs-websocket-py
+	url = https://github.com/Elektordi/obs-websocket-py.git
