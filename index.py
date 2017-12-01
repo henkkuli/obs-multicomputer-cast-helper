@@ -4,6 +4,7 @@ import time
 import random
 import subprocess
 import curses
+import csv
 
 logging.basicConfig(handlers = [], level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -89,6 +90,18 @@ def main(scr):
 
         if selected_computer in streaming_computers:
             selected_computer = -1
+
+    # Read user data
+    remote_computers = []
+    with open('users.csv', 'r') as user_file:
+        user_reader = csv.reader(user_file)
+        # Skip header
+        next(user_reader, None)
+        for user in user_reader:
+            host, user, password = user
+            remote_computers.append(RemoteComputer(host, user, password))
+
+    remote_manager = RemoteComputerManager(remote_computers)
 
     ws = obsws("127.0.0.1", 4444, "")
     ws.register(on_event)
