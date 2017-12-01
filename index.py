@@ -5,14 +5,18 @@ import random
 import subprocess
 import curses
 import csv
+import threading
+import socket
 
 logging.basicConfig(handlers = [], level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 source_prefix = "computer-source-"
+master_host = socket.gethostbyname(socket.gethostname())
 
 def on_event(message):
-    logger.debug("Got message: %r"%message)
+    #logger.debug("Got message: %r"%message)
+    pass
 
 class CursesLoggingHandler(logging.Handler):
     def __init__(self, screen):
@@ -31,15 +35,53 @@ class CursesLoggingHandler(logging.Handler):
             self.handleError(record)
 
 class RemoteComputer:
-    def __init__(self, address, user, password):
-        self.address = address
+    def __init__(self, host, user):
+        self.host = host
         self.user = user
-        self.password = password
 
 class RemoteComputerManager:
-    def __init__(self, computers):
+    def __init__(self, computers, command):
         self.computers = computers
+        self.command = command
+        self.connections = {}
 
+    def connect(self, preview_index, remote_computer_index):
+        local_port = preview_index + 10000
+        if local_port in self.connections:
+            self.connections[local_port].kill()
+
+        remote_computer = self.computers[remote_computer_index]
+
+        command = []
+        for part in self.command:
+            command.append(part.format(
+                host = remote_computer.host,
+                user = remote_computer.user,
+                master_host = master_host,
+                local_port = local_port,
+            ))
+        logger.debug('Calling command: %r' % command)
+
+        connection = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.connections[local_port] = connection
+
+        def enqueue_stdout():
+            for line in iter(connection.stdout.readline, b''):
+                logger.info("Computer %d: %s" % (remote_computer_index, line))
+            connection.stdout.close()
+        def enqueue_stderr():
+            for line in iter(connection.stderr.readline, b''):
+                logger.warning("Computer %d: %s" % (remote_computer_index, line))
+            connection.stderr.close()
+
+        stdout_thread = threading.Thread(target=enqueue_stdout)
+        stdout_thread.daemon = True
+
+        stderr_thread = threading.Thread(target=enqueue_stderr)
+        stderr_thread.daemon = True
+
+        #stdout_thread.start()
+        #stderr_thread.start()
 
 def main(scr):
     # Setup curses
@@ -97,11 +139,21 @@ def main(scr):
         user_reader = csv.reader(user_file)
         # Skip header
         next(user_reader, None)
-        for user in user_reader:
-            host, user, password = user
-            remote_computers.append(RemoteComputer(host, user, password))
+        for user_line in user_reader:
+            host, user = user_line
+            remote_computers.append(RemoteComputer(host, user))
 
-    remote_manager = RemoteComputerManager(remote_computers)
+    # TODO: Add bitrate options etc.
+    remote_manager = RemoteComputerManager(remote_computers,
+        ['ssh', '{user}@{host}',
+         'ffmpeg',
+         '-video_size', '1920x1080',
+         '-f', 'x11grab',
+         # TODO: Is this replace a security hazard?
+         #'-i', '$(who | grep {user} | awk \'{{print $5}}\' | tr -d \'()\' | grep \':[[:digit:]]*\' | head -n1)+0,0',
+         '-i', ':0',
+         '-f', 'mpegts', 'udp://{master_host}:{local_port}',
+         ])
 
     ws = obsws("127.0.0.1", 4444, "")
     ws.register(on_event)
@@ -126,6 +178,14 @@ def main(scr):
                 else:
                     logger.info('Selected computer: %d' % new_selection)
                     selected_computer = new_selection
+            # TODO: A more intuitive way to connect to remote computers
+            elif ord('A') <= key < ord('A') + len(remote_computers):
+                if selected_computer == 0:
+                    logger.warning('No computer selected')
+                else:
+                    remote_machine = key-ord('A')
+                    logger.info('Starting streaming %d to preview %d', remote_machine, selected_computer)
+                    remote_manager.connect(selected_computer, remote_machine)
 
 
             #ws.call(requests.SetPreviewScene(random.choice(scenes)['name']))
