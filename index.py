@@ -8,7 +8,7 @@ import csv
 import threading
 import socket
 
-logging.basicConfig(handlers = [], level=logging.DEBUG)
+logging.basicConfig(handlers = [], level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 source_prefix = "computer-source-"
