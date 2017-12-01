@@ -176,17 +176,22 @@ def main(scr):
                 while new_selection < 1: new_selection += 10
                 if new_selection in streaming_computers:
                     logger.warning('Cannot change the source of currently streaming computer')
+                    selected_computer = 0
                 else:
                     logger.info('Selected computer: %d' % new_selection)
                     selected_computer = new_selection
             # TODO: A more intuitive way to connect to remote computers
-            elif ord('A') <= key < ord('A') + len(remote_computers):
-                if selected_computer == 0:
-                    logger.warning('No computer selected')
-                else:
-                    remote_machine = key-ord('A')
-                    logger.info('Starting streaming %d to preview %d', remote_machine, selected_computer)
-                    remote_manager.connect(selected_computer, remote_machine)
+            else:
+                char = key - ord('A')
+                if char >= 26:
+                    char = key - ord('a')
+                if 0 <= char < len(remote_computers):
+                    if selected_computer == 0:
+                        logger.warning('No computer selected')
+                    else:
+                        remote_machine = char
+                        logger.info('Starting streaming %d to preview %d', remote_machine, selected_computer)
+                        remote_manager.connect(selected_computer, remote_machine)
 
 
             #ws.call(requests.SetPreviewScene(random.choice(scenes)['name']))
