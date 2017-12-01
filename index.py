@@ -152,6 +152,7 @@ def main(scr):
          # TODO: Is this replace a security hazard?
          #'-i', '$(who | grep {user} | awk \'{{print $5}}\' | tr -d \'()\' | grep \':[[:digit:]]*\' | head -n1)+0,0',
          '-i', ':0',
+         '-b:v', '100M',
          '-f', 'mpegts', 'udp://{master_host}:{local_port}',
          ])
 
