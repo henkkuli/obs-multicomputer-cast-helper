@@ -7,11 +7,15 @@ import curses
 import csv
 import threading
 import socket
+import shutil
 
 logging.basicConfig(handlers = [], level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 source_prefix = "computer-source-"
+overlay_prefix = "computer-overlay-"
+user_overlay_path = "user-overlays/user-{user}.png"
+overlay_path = "source-overlay-{source}.png"
 master_host = socket.gethostbyname(socket.gethostname())
 
 def on_event(message):
@@ -52,6 +56,7 @@ class RemoteComputerManager:
 
         remote_computer = self.computers[remote_computer_index]
 
+        # Start streaming from the computer
         command = []
         for part in self.command:
             command.append(part.format(
@@ -65,6 +70,7 @@ class RemoteComputerManager:
         connection = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.connections[local_port] = connection
 
+        # Capture log
         def enqueue_stdout():
             for line in iter(connection.stdout.readline, b''):
                 logger.info("Computer %d: %s" % (remote_computer_index, line))
@@ -82,6 +88,9 @@ class RemoteComputerManager:
 
         #stdout_thread.start()
         #stderr_thread.start()
+
+        # Change computer overlay
+        shutil.copyfile(user_overlay_path.format(user=remote_computer_index+1), overlay_path.format(source=preview_index))
 
 def main(scr):
     # Setup curses
