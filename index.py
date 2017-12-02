@@ -145,7 +145,7 @@ def main(scr):
 
     # TODO: Add bitrate options etc.
     remote_manager = RemoteComputerManager(remote_computers,
-        ['ssh', '{user}@{host}',
+        ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no', '{user}@{host}',
          'ffmpeg',
          '-video_size', '1920x1080',
          '-f', 'x11grab',
