@@ -90,7 +90,12 @@ class RemoteComputerManager:
         #stderr_thread.start()
 
         # Change computer overlay
-        shutil.copyfile(user_overlay_path.format(user=remote_computer_index+1), overlay_path.format(source=preview_index))
+        try:
+            shutil.copyfile(user_overlay_path.format(user=remote_computer_index+1), overlay_path.format(source=preview_index))
+        except Exception as e:
+            # Copying failed, ignore silently
+            logger.warning("Failed copying user overlay: %r" % e)
+            pass
 
 def main(scr):
     # Setup curses
