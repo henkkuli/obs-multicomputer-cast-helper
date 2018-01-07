@@ -44,9 +44,10 @@ class RemoteComputer:
         self.user = user
 
 class RemoteComputerManager:
-    def __init__(self, computers, command):
+    def __init__(self, computers, command, stdin):
         self.computers = computers
         self.command = command
+        self.stdin = stdin
         self.connections = {}
 
     def connect(self, preview_index, remote_computer_index):
@@ -67,8 +68,11 @@ class RemoteComputerManager:
             ))
         logger.debug('Calling command: %r' % command)
 
-        connection = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        connection = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.connections[local_port] = connection
+
+        connection.stdin.write(self.stdin);
+        connection.stdin.flush();
 
         # Capture log
         def enqueue_stdout():
@@ -157,18 +161,11 @@ def main(scr):
             host, user = user_line
             remote_computers.append(RemoteComputer(host, user))
 
-    # TODO: Add bitrate options etc.
-    remote_manager = RemoteComputerManager(remote_computers,
-        ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no', '{user}@{host}',
-         'ffmpeg',
-         '-video_size', '1920x1080',
-         '-f', 'x11grab',
-         # TODO: Is this replace a security hazard?
-         #'-i', '$(who | grep {user} | awk \'{{print $5}}\' | tr -d \'()\' | grep \':[[:digit:]]*\' | head -n1)+0,0',
-         '-i', ':0',
-         '-b:v', '100M',
-         '-f', 'mpegts', 'udp://{master_host}:{local_port}',
-         ])
+    command = ['ssh', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'StrictHostKeyChecking=no', '{user}@{host}',
+            'bash', '-s', '--', '{user}', 'udp://{master_host}:{local_port}'];
+    with open('remote-script.sh', 'r') as script_file:
+        script = bytearray(script_file.read(), 'utf-8')
+    remote_manager = RemoteComputerManager(remote_computers, command, script);
 
     ws = obsws("127.0.0.1", 4444, "")
     ws.register(on_event)
