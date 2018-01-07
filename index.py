@@ -8,6 +8,7 @@ import csv
 import threading
 import socket
 import shutil
+import queue
 
 logging.basicConfig(handlers = [], level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ overlay_prefix = "computer-overlay-"
 user_overlay_path = "user-overlays/user-{user}.png"
 overlay_path = "source-overlay-{source}.png"
 master_host = socket.gethostbyname(socket.gethostname())
+show_remote_log = False
 
 def on_event(message):
     #logger.debug("Got message: %r"%message)
@@ -90,8 +92,9 @@ class RemoteComputerManager:
         stderr_thread = threading.Thread(target=enqueue_stderr)
         stderr_thread.daemon = True
 
-        #stdout_thread.start()
-        #stderr_thread.start()
+        if show_remote_log:
+            stdout_thread.start()
+            stderr_thread.start()
 
         # Change computer overlay
         try:
@@ -100,6 +103,33 @@ class RemoteComputerManager:
             # Copying failed, ignore silently
             logger.warning("Failed copying user overlay: %r" % e)
             pass
+
+def get_currently_streaming_computers(ws):
+    # First request a list of scenes
+    scenes = ws.call(requests.GetSceneList())
+    current_scene = scenes.getCurrentScene()
+    scenes = scenes.getScenes()
+
+    logger.info("Finding out currently streaming computers")
+    
+    # Then organize them by name
+    scenes = {scene['name']: scene for scene in scenes}
+
+    streaming_computers = []
+    def handle_scene(scene):
+        for source in scene['sources']:
+            type = source['type']
+            if type == 'ffmpeg_source':
+                name = source['name']
+                if name.startswith(source_prefix):
+                    index = int(name[len(source_prefix):])
+                    streaming_computers.append(index)
+            elif type == 'scene':
+                handle_scene(scenes[source['name']])
+
+    handle_scene(scenes[current_scene])
+    return streaming_computers
+
 
 def main(scr):
     # Setup curses
@@ -136,20 +166,18 @@ def main(scr):
     selected_computer = 1
     streaming_computers = []
 
+    task_queue = queue.Queue()
+
     def handle_switch_scenes(message):
-        nonlocal selected_computer, streaming_computers
-        streaming_computers = []
+        def handler():
+            nonlocal selected_computer, streaming_computers, ws
+            streaming_computers = get_currently_streaming_computers(ws)
 
-        for source in message.getSources():
-            name = source['name']
-            if name.startswith(source_prefix):
-                index = int(name[len(source_prefix):])
-                streaming_computers.append(index)
+            logger.info('Currently streaming computers: %r' % streaming_computers)
 
-        logger.info('Currently streaming computers: %r' % streaming_computers)
-
-        if selected_computer in streaming_computers:
-            selected_computer = -1
+            if selected_computer in streaming_computers:
+                selected_computer = -1
+        task_queue.put(handler)
 
     # Read user data
     remote_computers = []
@@ -179,6 +207,14 @@ def main(scr):
 
     try:
         while True:
+            while True:
+                try:
+                    task = task_queue.get_nowait()
+                    task()
+                except queue.Empty:
+                    # No more tasks to handle
+                    break
+
             key = scr.getch()
             if key == curses.KEY_RESIZE:
                 handle_resize()
