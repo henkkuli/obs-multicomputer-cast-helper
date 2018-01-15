@@ -13,8 +13,9 @@ resolution=$(xdpyinfo | grep "dimensions:" | awk '{{print $2}}')
 
 # And finally start streaming
 ffmpeg \
-    -video_size $resolution \
+    -video_size "$resolution" \
     -f x11grab \
-    -i $display \
+    -i "$display" \
+    -vcodec libx264 -preset ultrafast -r 30 -threads 1 -crf 30 -movflags +faststart \
     -b:v 100M \
-    -f mpegts $master_address < /dev/null
+    -f mpegts "$master_address" < /dev/null
