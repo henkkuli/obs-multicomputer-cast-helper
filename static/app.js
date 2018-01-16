@@ -18,11 +18,11 @@ function createPreviews() {
     container.empty();
 
     previews = [];
-    for (let preview_number = 1; preview_number <= settings.number_of_previews; preview_number++) {
+    for (let preview_number = 0; preview_number < settings.number_of_previews; preview_number++) {
         const preview = template.clone();
         const buttonPanel = preview.find(".button-panel")
         preview.removeClass("d-none");
-        preview.find(".name").text(`Preview ${preview_number}`);
+        preview.find(".name").text(`Preview ${preview_number + 1}`);
 
         for (let host_index = -1; host_index < settings.hosts.length; host_index++) {
             const host_button = $("<button>");
@@ -66,7 +66,6 @@ $(function() {
     socket.on("log", function(data) {
         const preview = data.preview_number;
         const log = data.log;
-        console.log(arguments);
         const log_string = log.map(line => textDecoder.decode(line)).join('');
 
         const preview_panel = previews[preview];
@@ -77,11 +76,22 @@ $(function() {
         const height = log_panel[0].scrollHeight;
         log_panel.stop().animate({ scrollTop: height }, 50);
     });
-    socket.on("bear", function(data) {
-        console.log("Heatbeat");
-    });
 
-    $('.change-preview').on('click', function(event) {
-        alert(arguments);
+    socket.on("preview_error", function(data) {
+        const preview = previews[data.preview_number];
+        const message = data.message;
+
+        const alert = $("<div>");
+        alert.addClass("alert alert-warning alert-dismissible fade show");
+        alert.text(message);
+        alert.append("<button type='button' class='close' data-dismiss='alert'><span>&times;</span></button>");
+
+        preview.find(".alert-box").append(alert);
+
+        alert.alert();
+
+        setTimeout(function() {
+            alert.alert("close");
+        }, 1000);
     });
 });

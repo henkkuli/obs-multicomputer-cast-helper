@@ -28,7 +28,7 @@ event_queue = queue.Queue()
 
 def main():
    # And connect to obs
-    obs = Obs("127.0.0.1", 4444, "", event_queue)
+    obs = Obs("127.0.0.1", 4444, "", config, event_queue)
     # The load the user list
 
     # Read user data
@@ -62,24 +62,20 @@ def main():
     @socketio.on('client_connected')
     def handle_client_connect_event(json):
         hosts = list(map(lambda computer: computer.real_name, remote_computers))
-        print(str(hosts))
         emit('welcome', { 'number_of_previews': config.getint('number_of_previews'), 'hosts': hosts })
 
     @socketio.on('change_preview')
     def handle_change_preview_event(json):
-        event_queue.put(lambda json=json: remote_manager.connect(json['preview_number'] - 1, json['remote_number']))
+        preview = json['preview_number']
+        remote = json['remote_number']
+
+        if preview+1 in obs.currently_streaming:
+            emit('preview_error', { 'preview_number': preview, 'message': 'Can not change while streaming' })
+        else:
+            event_queue.put(lambda preview=preview, remote=remote: remote_manager.connect(preview, remote))
 
     def send_log(preview_number, log):
         socketio.emit('log', { 'preview_number': preview_number, 'log': log.get_messages() }, broadcast=True);
-
-    def hearbeat():
-        while True:
-            #print('Beat')
-            #socketio.emit('beat', {})
-            time.sleep(1)
-    thread = threading.Thread(target=hearbeat)
-    thread.daemon = True
-    thread.start()
 
 def event_loop():
     while True:
