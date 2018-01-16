@@ -38,8 +38,8 @@ def main():
         # Skip header
         next(user_reader, None)
         for user_line in user_reader:
-            host, user = user_line
-            remote_computers.append(RemoteComputer(host, user))
+            host, user, real_name = user_line
+            remote_computers.append(RemoteComputer(host, user, real_name))
 
     # Create the preview objects
     previews = []
@@ -61,7 +61,9 @@ def main():
 
     @socketio.on('client_connected')
     def handle_client_connect_event(json):
-        emit('welcome', { 'number_of_previews': config.getint('number_of_previews') })
+        hosts = list(map(lambda computer: computer.real_name, remote_computers))
+        print(str(hosts))
+        emit('welcome', { 'number_of_previews': config.getint('number_of_previews'), 'hosts': hosts })
 
     @socketio.on('change_preview')
     def handle_change_preview_event(json):

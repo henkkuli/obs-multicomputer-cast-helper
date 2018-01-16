@@ -2,9 +2,10 @@ import subprocess
 import threading
 
 class RemoteComputer:
-    def __init__(self, host, user):
+    def __init__(self, host, user, real_name):
         self.host = host
         self.user = user
+        self.real_name = real_name
 
 class RemoteComputerManager:
     def __init__(self, computers, previews, master_host, command, stdin):
