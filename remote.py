@@ -1,3 +1,5 @@
+import subprocess
+import threading
 
 class RemoteComputer:
     def __init__(self, host, user):
@@ -5,14 +7,16 @@ class RemoteComputer:
         self.user = user
 
 class RemoteComputerManager:
-    def __init__(self, computers, previews, command, stdin):
+    def __init__(self, computers, previews, master_host, command, stdin):
         self.computers = computers
-        self.previes = previews
+        self.previews = previews
+        self.master_host = master_host
         self.command = command
         self.stdin = stdin
         self.connections = {}
 
     def connect(self, preview_index, remote_computer_index):
+        print("Connecting {0} and {1}".format(preview_index, remote_computer_index))
         if preview_index >= len(self.previews):
             return
 
@@ -29,10 +33,10 @@ class RemoteComputerManager:
             command.append(part.format(
                 host = remote_computer.host,
                 user = remote_computer.user,
-                master_host = master_host,
+                master_host = self.master_host,
                 local_port = local_port,
             ))
-        logger.debug('Calling command: %r' % command)
+        #logger.debug('Calling command: %r' % command)
 
         connection = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.connections[local_port] = connection
@@ -43,11 +47,11 @@ class RemoteComputerManager:
         # Capture log
         def enqueue_stdout():
             for line in iter(connection.stdout.readline, b''):
-                preview[1].log(message)
+                preview[1].log(line)
             connection.stdout.close()
         def enqueue_stderr():
             for line in iter(connection.stderr.readline, b''):
-                preview[1].log(message)
+                preview[1].log(line)
             connection.stderr.close()
 
         stdout_thread = threading.Thread(target=enqueue_stdout)
@@ -64,5 +68,5 @@ class RemoteComputerManager:
             shutil.copyfile(user_overlay_path.format(user=remote_computer_index+1), overlay_path.format(source=preview_index))
         except Exception as e:
             # Copying failed, ignore silently
-            logger.warning("Failed copying user overlay: %r" % e)
+            #logger.warning("Failed copying user overlay: %r" % e)
             pass

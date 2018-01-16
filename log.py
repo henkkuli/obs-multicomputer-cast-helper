@@ -6,9 +6,24 @@ class Log:
         self.__lock = threading.Lock()
         self.__history = []
         self.__history_length = history_length
-        self.__queue = qeueu
+        self.__queue = queue
         self.__clear_event_handlers = []
         self.__log_event_handlers = []
+
+    def onClear(self, handler):
+        self.__lock.acquire()
+
+        self.__clear_event_handlers.append(handler)
+
+        self.__lock.release()
+
+    def onMessage(self, handler):
+        self.__lock.acquire()
+
+        self.__log_event_handlers.append(handler)
+
+        self.__lock.release()
+
 
     def log(self, message):
         self.__lock.acquire()
@@ -19,7 +34,7 @@ class Log:
             self.__history = self.__history[len(self.__history) - self.__history_length : ]
 
         for handler in self.__log_event_handlers:
-            queue.put(lambda: handler(message))
+            self.__queue.put(lambda message=message: handler(message))
 
         self.__lock.release()
 
@@ -30,7 +45,7 @@ class Log:
         self.__history = []
 
         for handler in self.__clear_event_handlers:
-            queue.put(lambda: handler(message))
+            self.__queue.put(lambda: handler)
 
         self.__lock.release()
 

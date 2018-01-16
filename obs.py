@@ -5,8 +5,22 @@ class Obs:
     def __init__(self, url, port, password, queue):
         self.__ws = obsws(url, port, password)
         self.currently_streaming = []
+        self.selected_computer = -1
         self.__queue = queue
 
+        self.__ws.register(self.handle_switch_scenes, events.SwitchScenes)
+        self.__ws.connect()
+
+    def handle_switch_scenes(message):
+        def handler():
+            get_currently_streaming_computers(ws)
+
+            logger.info('Currently streaming computers: %r' % streaming_computers)
+
+            if self.selected_computer in self.currently_streaming:
+                self.selected_computer = -1
+
+        self.__queue.put(handler)
 
     def get_currently_streaming_computers(self):
         ws = self.__ws
