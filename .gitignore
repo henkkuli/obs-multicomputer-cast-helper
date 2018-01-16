@@ -1,3 +1,4 @@
 users.csv
 source-overlay-*
 user-overlays/
+__pycache__
