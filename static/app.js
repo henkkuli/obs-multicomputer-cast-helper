@@ -24,11 +24,16 @@ function createPreviews() {
         preview.removeClass("d-none");
         preview.find(".name").text(`Preview ${preview_number}`);
 
-        for (let host_index = 0; host_index < settings.hosts.length; host_index++) {
+        for (let host_index = -1; host_index < settings.hosts.length; host_index++) {
             const host_button = $("<button>");
 
             host_button.on("click", () => changePreview(preview_number, host_index));
-            host_button.text(settings.hosts[host_index]);
+            if (host_index >= 0) {
+                host_button.text(settings.hosts[host_index]);
+            } else {
+                host_button.text("None")
+            }
+
 
             buttonPanel.append(host_button);
         }

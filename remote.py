@@ -26,6 +26,9 @@ class RemoteComputerManager:
         if local_port in self.connections:
             self.connections[local_port].kill()
 
+        if remote_computer_index == -1:
+            return          # The old stream is now killed so everythin is done
+
         remote_computer = self.computers[remote_computer_index]
 
         # Start streaming from the computer
