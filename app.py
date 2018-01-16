@@ -53,7 +53,14 @@ def main():
             'bash', '-s', '--', '{user}', 'udp://{master_host}:{local_port}'];
     with open('remote-script.sh', 'r') as script_file:
         script = bytearray(script_file.read(), 'utf-8')
-    remote_manager = RemoteComputerManager(remote_computers, previews, config.get('master_host'), command, script)
+    remote_manager = RemoteComputerManager(
+        remote_computers,
+        previews,
+        config.get('master_host'),
+        config.get('user_overlay_path'),
+        config.get('overlay_path'),
+        command, script
+    )
 
     @app.route('/')
     def index():

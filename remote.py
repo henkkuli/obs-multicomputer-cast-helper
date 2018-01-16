@@ -1,5 +1,6 @@
 import subprocess
 import threading
+import shutil
 
 class RemoteComputer:
     def __init__(self, host, user, real_name):
@@ -8,10 +9,12 @@ class RemoteComputer:
         self.real_name = real_name
 
 class RemoteComputerManager:
-    def __init__(self, computers, previews, master_host, command, stdin):
+    def __init__(self, computers, previews, master_host, user_overlay_path, overlay_path, command, stdin):
         self.computers = computers
         self.previews = previews
         self.master_host = master_host
+        self.user_overlay_path = user_overlay_path
+        self.overlay_path = overlay_path
         self.command = command
         self.stdin = stdin
         self.connections = {}
@@ -69,8 +72,8 @@ class RemoteComputerManager:
 
         # Change computer overlay
         try:
-            shutil.copyfile(user_overlay_path.format(user=remote_computer_index+1), overlay_path.format(source=preview_index))
+            shutil.copyfile(self.user_overlay_path.format(user=remote_computer_index+1), self.overlay_path.format(source=preview_index+1))
         except Exception as e:
             # Copying failed, ignore silently
-            #logger.warning("Failed copying user overlay: %r" % e)
+            print(e)
             pass
